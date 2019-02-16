@@ -11,19 +11,36 @@ using System.Xml.Serialization;
 
 namespace DebugViewConsoleApp
 {
-    class Program
+    internal static class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            var logger = new TraceLogger();
+            var traceLogger = new TraceLogger();
+            traceLogger.Info($"START ==============================");
 
-            DoWork(logger);
+            var workService = new WorkService(traceLogger);
+            workService.DoWork();
+
+            traceLogger.Info($"END ==============================");
 
             Console.WriteLine("Hit a key to exit");
             Console.ReadKey();
         }
+    }
 
-        private static void DoWork(TraceLogger logger)
+    public class WorkService
+    {
+        private readonly ILogger _logger;
+
+        public WorkService(ILogger logger)
+        {
+            if (logger == null)
+                throw new ArgumentNullException(nameof(logger));
+
+            _logger = logger;
+        }
+
+        public void DoWork()
         {
             var fixture = new Fixture();
 
@@ -31,7 +48,7 @@ namespace DebugViewConsoleApp
 
             for (int i = 0; i < repeatCount; i++)
             {
-                logger.Info($"Processing loop {i} : START ==============================");
+                _logger.Info($"Processing loop {i} : START ==============================");
 
                 var dto = fixture.Create<MyDto>();
                 var dtoSerialised = XmlSerializeObject(dto);
@@ -41,12 +58,11 @@ namespace DebugViewConsoleApp
                         dto,
                         Formatting.Indented);
 
-                logger.Info($"MyDto - Xml - Start\n{dtoSerialised}");
-                logger.Info($"MyDto - Xml - End\n");
+                _logger.Info($"MyDto - Xml - Start\n{dtoSerialised}");
+                _logger.Info($"MyDto - Xml - End\n");
 
-                // logger.Info($"MyDto - Json - Start\n{dtoSerialisedJson}\nMyApp: MyDto - Json - End\n");
-                logger.Info($"MyDto - Json - Start\n{dtoSerialisedJson}");
-                logger.Info($"MyDto - Json - End\n");
+                _logger.Info($"MyDto - Json - Start\n{dtoSerialisedJson}");
+                _logger.Info($"MyDto - Json - End\n");
 
                 try
                 {
@@ -56,22 +72,27 @@ namespace DebugViewConsoleApp
                 }
                 catch (Exception ex)
                 {
-                    logger.Error($"{ex}");
+                    _logger.Error($"{ex}");
                     //throw;
                 }
 
-                logger.Info($"Processing loop {i} : END ==============================");
-                logger.Info($"");
+                _logger.Info($"Processing loop {i} : END ==============================");
+                _logger.Info($"");
             }
         }
 
-        public static string XmlSerializeObject<T>(T toSerialize)
+        public string XmlSerializeObject<T>(T value)
         {
-            XmlSerializer xmlSerializer = new XmlSerializer(toSerialize.GetType());
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            XmlSerializer xmlSerializer = new XmlSerializer(value.GetType());
 
             using (StringWriter textWriter = new StringWriter())
             {
-                xmlSerializer.Serialize(textWriter, toSerialize);
+                xmlSerializer.Serialize(textWriter, value);
                 return textWriter.ToString();
             }
         }
@@ -79,8 +100,8 @@ namespace DebugViewConsoleApp
 
     public interface ILogger
     {
-        void Error(string message, string memberName = "", string sourceFilePath = "", int sourceLineNumber = 0);
-        void Info(string message, string memberName = "", string sourceFilePath = "", int sourceLineNumber = 0);
+        void Error(string message, string memberName = null, string sourceFilePath = null, int sourceLineNumber = 0);
+        void Info(string message, string memberName = null, string sourceFilePath = null, int sourceLineNumber = 0);
     }
 
     public class TraceLogger : ILogger
@@ -90,7 +111,7 @@ namespace DebugViewConsoleApp
             [System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = null,
             [System.Runtime.CompilerServices.CallerLineNumber] int sourceLineNumber = 0)
         {
-            TraceMessage($"[ERROR] : {sourceFilePath} : Method {memberName.ToString()} : Line {sourceLineNumber.ToString()}");
+            TraceMessage($"[ERROR] : Method [{memberName}] : File [{sourceFilePath}] : Line [{sourceLineNumber.ToString()}]");
             TraceMessage(message);
         }
 
@@ -111,14 +132,14 @@ namespace DebugViewConsoleApp
         //    System.Diagnostics.Trace.WriteLine("member name: " + memberName);
         //    System.Diagnostics.Trace.WriteLine("source file path: " + sourceFilePath);
         //    System.Diagnostics.Trace.WriteLine("source line number: " + sourceLineNumber);
-        //}
+        //}h
 
         public void Info(string message,
             [System.Runtime.CompilerServices.CallerMemberName] string memberName = null,
             [System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = null,
             [System.Runtime.CompilerServices.CallerLineNumber] int sourceLineNumber = 0)
         {
-            TraceMessage($"[INFO] : {sourceFilePath} : Method {memberName.ToString()} : Line {sourceLineNumber.ToString()}");
+            TraceMessage($"[INFO] : Method [{memberName}] : File [{sourceFilePath}] : Line [{sourceLineNumber.ToString()}]");
             TraceMessage(message);
         }
 
@@ -127,7 +148,7 @@ namespace DebugViewConsoleApp
             Trace.WriteLine(
                 string.IsNullOrWhiteSpace(message) ?
                 message :
-                $"{System.AppDomain.CurrentDomain.FriendlyName}: {message}");
+                $"{AppDomain.CurrentDomain.FriendlyName}: {message}");
         }
     }
 
