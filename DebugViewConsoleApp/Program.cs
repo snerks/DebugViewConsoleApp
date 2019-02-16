@@ -34,17 +34,14 @@ namespace DebugViewConsoleApp
 
         public WorkService(ILogger logger)
         {
-            if (logger == null)
-                throw new ArgumentNullException(nameof(logger));
-
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public void DoWork()
         {
             var fixture = new Fixture();
 
-            var repeatCount = 3;
+            const int repeatCount = 3;
 
             for (int i = 0; i < repeatCount; i++)
             {
@@ -90,7 +87,7 @@ namespace DebugViewConsoleApp
 
             XmlSerializer xmlSerializer = new XmlSerializer(value.GetType());
 
-            using (StringWriter textWriter = new StringWriter())
+            using (var textWriter = new StringWriter())
             {
                 xmlSerializer.Serialize(textWriter, value);
                 return textWriter.ToString();
